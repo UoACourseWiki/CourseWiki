@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CourseWiki.Data;
 using CourseWiki.Models;
+using CourseWiki.Models.DTOs.Responses;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Logging;
 
 namespace CourseWiki.Controllers
@@ -32,18 +35,22 @@ namespace CourseWiki.Controllers
         [HttpGet("course/")]
         public async Task<ActionResult<Course>> GetCourse(Guid guid)
         {
-            var courses = await _context.Courses.FindAsync(guid);
+            var course = await _context.Courses.FindAsync(guid);
 
-            if (courses == null)
+            if (course == null)
             {
                 return NotFound();
             }
 
-            return courses;
+            course.CitUUIDs = await _context.CoursesInTerms
+                .Where(courseInTerm => courseInTerm.CourseUUID == course.Id)
+                .Select(courseInTermSelected => courseInTermSelected.Id).ToListAsync();
+            return Ok(course);
         }
 
         [HttpGet("")]
-        public async Task<ActionResult<Course>> SearchCourses(string? search, string? subject, string? catalogNbr,
+        public async Task<ActionResult<List<CourseSearchByTxtResponse>>> SearchCourses(string? search, string? subject,
+            string? catalogNbr,
             int? level)
         {
             var courses = await _context.Courses.Where(a => a.SearchVector.Matches(search) || search == null)
@@ -52,14 +59,20 @@ namespace CourseWiki.Controllers
                 .Where(a => (a.CatalogNbr.CompareTo((level * 100).ToString()) > 0 &&
                              a.CatalogNbr.CompareTo(((level + 1) * 100).ToString()) < 0) || level == null)
                 .OrderBy(a => a.CatalogNbr)
-                .ToArrayAsync();
+                .ToListAsync();
 
-            if (courses.Length == 0)
+            if (courses.Count == 0)
             {
                 return NotFound();
             }
 
-            return Ok(courses);
+            var coursesNoCit = (from course in courses
+                select new CourseSearchByTxtResponse()
+                {
+                    Id = course.Id, Subject = course.Subject, CatalogNbr = course.CatalogNbr,
+                    Description = course.Description, Title = course.Title
+                }).ToList();
+            return Ok(coursesNoCit);
         }
     }
 }
