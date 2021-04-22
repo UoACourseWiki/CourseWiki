@@ -14,7 +14,7 @@ namespace CourseWiki.Models
         [JsonPropertyName("syllabusLink")] public string SyllabusLink { get; set; }
         [JsonPropertyName("canvasLink")] public string CanvasLink { get; set; }
         [JsonPropertyName("examLink")] public string ExamLink { get; set; }
-        [JsonPropertyName("courseUUID")] public Guid? CourseUUID { get; set; }
+        [JsonIgnore] public Guid? CourseUUID { get; set; }
         [NotMapped] public List<Guid> ClassUUIDs { get; set; }
     }
 }

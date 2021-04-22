@@ -15,7 +15,7 @@ namespace CourseWiki.Models
         [JsonPropertyName("component")] public string Component { get; set; }
         [JsonPropertyName("consent")] public string Consent { get; set; }
         [JsonPropertyName("dropConsent")] public string DropConsent { get; set; }
-        [JsonPropertyName("cituuid")] public Guid? Cituuid { get; set; }
+        [JsonIgnore] public Guid? Cituuid { get; set; }
 
         [Column(TypeName = "jsonb")]
         [JsonPropertyName("meetingPatterns")]
