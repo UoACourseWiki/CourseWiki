@@ -1,15 +1,17 @@
+using System;
 using CourseWiki.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace CourseWiki.Data
+namespace CourseWiki.Misc
 {
-    public class ApiDbContext : IdentityDbContext
+    public class ApiDbContext : IdentityDbContext<Account,IdentityRole<Guid>,Guid>
     {
-        public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
         public virtual DbSet<CourseInTerm> CoursesInTerms { get; set; }
         public virtual DbSet<Course> Courses { get; set; }
         public virtual DbSet<Lecturer> Lecturers { get; set; }
+        public virtual DbSet<Account> Accounts { get; set; }
         public virtual DbSet<Cls> Clses { get; set; }
 
         public ApiDbContext(DbContextOptions<ApiDbContext> options)

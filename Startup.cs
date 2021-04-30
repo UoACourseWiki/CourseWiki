@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using CourseWiki.Configuration;
-using CourseWiki.Data;
+using CourseWiki.Misc;
+using CourseWiki.Models;
+using CourseWiki.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -31,44 +32,13 @@ namespace CourseWiki
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.Configure<JwtConfig>(Configuration.GetSection("JwtConfig"));
-
             services.AddDbContext<ApiDbContext>(options =>
                 options.UseNpgsql(
                     Configuration.GetConnectionString("rmfDatabase")
                 ));
 
-            var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
-
-            var tokenValidationParams = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                RequireExpirationTime = false,
-                ClockSkew = TimeSpan.Zero
-            };
-
-            services.AddSingleton(tokenValidationParams);
-
-            services.AddAuthentication(options =>
-                {
-                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                })
-                .AddJwtBearer(jwt =>
-                {
-                    jwt.SaveToken = true;
-                    jwt.TokenValidationParameters = tokenValidationParams;
-                });
-
-            services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-                .AddEntityFrameworkStores<ApiDbContext>();
-
             services.AddControllers();
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo {Title = "CourseWiki", Version = "v1"});
@@ -84,10 +54,40 @@ namespace CourseWiki
 
                 c.OperationFilter<AuthResponsesOperationFilter>();
             });
-
+            services.AddScoped<IAccountService, AccountService>();
+            services.AddScoped<IEmailService, EmailService>();
+            services.Configure<AppSettings>(Configuration.GetSection("AppSettings"));
             services.AddCors(options =>
             {
                 options.AddPolicy("Open", builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+            });
+            services.AddIdentity<Account, IdentityRole<Guid>>(options => options.SignIn.RequireConfirmedAccount = true)
+                .AddEntityFrameworkStores<ApiDbContext>()
+                .AddDefaultTokenProviders();
+            services.AddAuthentication(opts =>
+                {
+                    opts.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                    opts.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(opts =>
+                {
+                    // opts.RequireHttpsMetadata = false;
+                    // opts.SaveToken = true;
+                    opts.TokenValidationParameters = new TokenValidationParameters()
+                    {
+                        IssuerSigningKey =
+                            new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["AppSettings:Secret"])),
+                        ValidateIssuerSigningKey = true,
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
+                        ClockSkew = TimeSpan.Zero
+                    };
+                });
+            services.AddAuthorization(opts =>
+            {
+                opts.AddPolicy("RequireAdmin", policy => policy.RequireRole("Admin"));
             });
         }
 
@@ -101,7 +101,7 @@ namespace CourseWiki
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "CourseWiki v1"));
             }
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
 
             app.UseRouting();
             app.UseAuthentication();
@@ -111,49 +111,49 @@ namespace CourseWiki
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
         }
-    }
 
-    internal class AuthResponsesOperationFilter : IOperationFilter
-    {
-        public void Apply(OpenApiOperation operation, OperationFilterContext context)
+        internal class AuthResponsesOperationFilter : IOperationFilter
         {
-            var attributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
-                .Union(context.MethodInfo.GetCustomAttributes(true));
-
-            if (attributes.OfType<IAllowAnonymous>().Any())
+            public void Apply(OpenApiOperation operation, OperationFilterContext context)
             {
-                return;
-            }
+                var attributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
+                    .Union(context.MethodInfo.GetCustomAttributes(true));
 
-            var authAttributes = attributes.OfType<IAuthorizeData>();
-
-            if (authAttributes.Any())
-            {
-                operation.Responses["401"] = new OpenApiResponse {Description = "Unauthorized"};
-
-                if (authAttributes.Any(att =>
-                    !String.IsNullOrWhiteSpace(att.Roles) || !String.IsNullOrWhiteSpace(att.Policy)))
+                if (attributes.OfType<IAllowAnonymous>().Any())
                 {
-                    operation.Responses["403"] = new OpenApiResponse {Description = "Forbidden"};
+                    return;
                 }
 
-                operation.Security = new List<OpenApiSecurityRequirement>
+                var authAttributes = attributes.OfType<IAuthorizeData>();
+
+                if (authAttributes.Any())
                 {
-                    new OpenApiSecurityRequirement
+                    operation.Responses["401"] = new OpenApiResponse {Description = "Unauthorized"};
+
+                    if (authAttributes.Any(att =>
+                        !String.IsNullOrWhiteSpace(att.Roles) || !String.IsNullOrWhiteSpace(att.Policy)))
                     {
-                        {
-                            new OpenApiSecurityScheme
-                            {
-                                Reference = new OpenApiReference
-                                {
-                                    Id = "BearerAuth",
-                                    Type = ReferenceType.SecurityScheme
-                                }
-                            },
-                            Array.Empty<string>()
-                        }
+                        operation.Responses["403"] = new OpenApiResponse {Description = "Forbidden"};
                     }
-                };
+
+                    operation.Security = new List<OpenApiSecurityRequirement>
+                    {
+                        new OpenApiSecurityRequirement
+                        {
+                            {
+                                new OpenApiSecurityScheme
+                                {
+                                    Reference = new OpenApiReference
+                                    {
+                                        Id = "BearerAuth",
+                                        Type = ReferenceType.SecurityScheme
+                                    }
+                                },
+                                Array.Empty<string>()
+                            }
+                        }
+                    };
+                }
             }
         }
     }
