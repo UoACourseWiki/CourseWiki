@@ -70,8 +70,26 @@ namespace CourseWiki.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest model)
         {
-            await _accountService.Register(model, Request.Headers["origin"]);
-            return Ok(new {message = "Registration successful, please check your email for verification instructions"});
+            int statuscode = await _accountService.Register(model, Request.Headers["origin"]);
+            if (statuscode == 200)
+            {
+                return Ok(new
+                    {message = "Registration successful, please check your email for verification instructions"});
+            }
+
+            if (statuscode == 1)
+            {
+                return Conflict(new
+                    {message = "You email is already registered"});
+                
+            }
+            if (statuscode == 2)
+            {
+                return BadRequest(new {message = "You password is too weak."});
+                
+            }
+
+            return BadRequest(new {message = "Unknown error!"});
         }
 
         [HttpPost("verify-email")]

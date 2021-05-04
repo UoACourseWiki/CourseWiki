@@ -21,7 +21,7 @@ namespace CourseWiki.Services
         Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
         Task<AuthenticateResponse> RefreshToken(string token, string ipAddress);
         Task RevokeToken(string token, string ipAddress);
-        Task Register(RegisterRequest model, string origin);
+        Task<int> Register(RegisterRequest model, string origin);
         Task VerifyEmail(string email, string token);
         Task ForgotPassword(ForgotPasswordRequest model, string origin);
         Task ValidateResetToken(ValidateResetTokenRequest model);
@@ -107,14 +107,14 @@ namespace CourseWiki.Services
             await _userManager.UpdateAsync(account);
         }
 
-        public async Task Register(RegisterRequest model, string origin)
+        public async Task<int> Register(RegisterRequest model, string origin)
         {
             // validate
             if (await _userManager.FindByEmailAsync(model.Email) != null)
             {
                 // send already registered error in email to prevent account enumeration
                 SendAlreadyRegisteredEmail(model.Email, origin);
-                return;
+                return 1;
             }
 
             // map model to new account object
@@ -126,6 +126,14 @@ namespace CourseWiki.Services
             await _userManager.SetUserNameAsync(account, model.Email);
             // first registered account is an admin
             var isFirstAccount = _userManager.Users.Count() == 0;
+            foreach (var passwordValidator in _userManager.PasswordValidators.ToList())
+            {
+                var result = await passwordValidator.ValidateAsync(_userManager, null, model.Password);
+                if (!result.Succeeded)
+                {
+                    return 2;
+                }
+            }
             var status = await _userManager.CreateAsync(account, model.Password);
             await _userManager.AddToRoleAsync(account, isFirstAccount ? Roles.Admin.ToString() : Roles.User.ToString());
             account.Created = DateTime.UtcNow;
@@ -133,6 +141,7 @@ namespace CourseWiki.Services
 
             // send email
             SendVerificationEmail(account, origin, token);
+            return 200;
         }
 
         public async Task VerifyEmail(string email, string token)
