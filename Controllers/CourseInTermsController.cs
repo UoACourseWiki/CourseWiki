@@ -28,8 +28,8 @@ namespace CourseWiki.Controllers
                 return NotFound();
             }
 
-            courseInTerm.ClassUUIDs = await _context.Clses.Where(cls => cls.Cituuid == courseInTerm.Id)
-                .Select(clsSelected => clsSelected.Id).ToListAsync();
+            courseInTerm.Sections = await _context.Clses.Where(cls => cls.Cituuid == courseInTerm.Id)
+                .Select(clsSelected => clsSelected.ClassSection).ToListAsync();
             return Ok(courseInTerm);
         }
     }

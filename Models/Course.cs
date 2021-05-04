@@ -15,7 +15,7 @@ namespace CourseWiki.Models
         [JsonPropertyName("subject")] public string Subject { get; set; }
         [JsonPropertyName("title")] public string Title { get; set; }
         [JsonPropertyName("rqrmntDescr")] public string RqrmntDescr { get; set; }
-        [NotMapped] public List<Guid> CitUUIDs { get; set; }
+        [NotMapped] public List<string> Terms { get; set; }
         [JsonIgnore] public NpgsqlTsVector SearchVector { get; set; }
     }
 }

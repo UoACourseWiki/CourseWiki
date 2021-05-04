@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 
 namespace CourseWiki.Controllers
 {
-    // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [ApiController]
     [Route("[controller]")]
     public class CoursesController : ControllerBase
@@ -40,9 +39,9 @@ namespace CourseWiki.Controllers
                 return NotFound();
             }
 
-            course.CitUUIDs = await _context.CoursesInTerms
+            course.Terms = await _context.CoursesInTerms
                 .Where(courseInTerm => courseInTerm.CourseUUID == course.Id)
-                .Select(courseInTermSelected => courseInTermSelected.Id).ToListAsync();
+                .Select(courseInTermSelected => courseInTermSelected.Term).ToListAsync();
             return Ok(course);
         }
 
@@ -71,6 +70,80 @@ namespace CourseWiki.Controllers
                     Description = course.Description, Title = course.Title
                 }).ToList();
             return Ok(coursesNoCit);
+        }
+
+        [HttpGet("{subject}")]
+        public async Task<ActionResult<List<Course>>> GetCoursesBySubject(string subject)
+        {
+            var courses = await _context.Courses.Where(a => a.Subject == subject).OrderBy(a => a.CatalogNbr)
+                .ToListAsync();
+            if (courses.Count == 0)
+            {
+                return NotFound();
+            }
+
+            foreach (var course in courses)
+            {
+                course.Terms = await _context.CoursesInTerms
+                    .Where(courseInTerm => courseInTerm.CourseUUID == course.Id)
+                    .Select(courseInTermSelected => courseInTermSelected.Term).ToListAsync();
+            }
+
+            return Ok(courses);
+        }
+
+        [HttpGet("{subject}/{catalogNbr}")]
+        public async Task<ActionResult<Course>> GetCourseByCatalogNbr(string subject, string catalogNbr)
+        {
+            var course = await _context.Courses.Where(a => a.Subject == subject).Where(a => a.CatalogNbr == catalogNbr)
+                .OrderBy(a => a.CatalogNbr).FirstOrDefaultAsync();
+            if (course == null)
+            {
+                return NotFound();
+            }
+
+            course.Terms = await _context.CoursesInTerms
+                .Where(courseInTerm => courseInTerm.CourseUUID == course.Id).OrderBy(courseInTerm => courseInTerm.Term)
+                .Select(courseInTermSelected => courseInTermSelected.Term).ToListAsync();
+
+            return Ok(course);
+        }
+
+        [HttpGet("{subject}/{catalogNbr}/{term}")]
+        public async Task<ActionResult<CourseInTerm>> GetCourseInTermByTerm(string subject, string catalogNbr,
+            string term)
+        {
+            var course = await _context.Courses.Where(a => a.Subject == subject).Where(a => a.CatalogNbr == catalogNbr)
+                .OrderBy(a => a.CatalogNbr).FirstOrDefaultAsync();
+            var courseInTerm = await _context.CoursesInTerms.Where(b => b.CourseUUID == course.Id)
+                .Where(b => b.Term == term).FirstOrDefaultAsync();
+            if (courseInTerm == null)
+            {
+                return NotFound();
+            }
+
+            courseInTerm.Sections = await _context.Clses.Where(a => a.Cituuid == courseInTerm.Id)
+                .OrderBy(a => a.ClassSection)
+                .Select(b => b.ClassSection).ToListAsync();
+            return Ok(courseInTerm);
+        }
+
+        [HttpGet("{subject}/{catalogNbr}/{term}/{section}")]
+        public async Task<ActionResult<Cls>> GetClassBySection(string subject, string catalogNbr, string term,
+            string section)
+        {
+            var course = await _context.Courses.Where(a => a.Subject == subject).Where(a => a.CatalogNbr == catalogNbr)
+                .OrderBy(a => a.CatalogNbr).FirstOrDefaultAsync();
+            var courseInTerm = await _context.CoursesInTerms.Where(b => b.CourseUUID == course.Id)
+                .Where(b => b.Term == term).FirstOrDefaultAsync();
+            var cls = await _context.Clses.Where(a => a.Cituuid == courseInTerm.Id)
+                .Where(a => a.ClassSection == section).FirstOrDefaultAsync();
+            if (cls == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(cls);
         }
     }
 }
