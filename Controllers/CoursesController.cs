@@ -51,8 +51,8 @@ namespace CourseWiki.Controllers
             int? level)
         {
             var courses = await _context.Courses.Where(a => a.SearchVector.Matches(search) || search == null)
-                .Where(a => a.Subject == subject.ToUpper() || subject == null)
-                .Where(a => a.CatalogNbr == catalogNbr || catalogNbr == null)
+                .Where(a => EF.Functions.ILike(a.Subject, subject) || subject == null)
+                .Where(a => EF.Functions.ILike(a.CatalogNbr, catalogNbr) || catalogNbr == null)
                 .Where(a => (a.CatalogNbr.CompareTo((level * 100).ToString()) > 0 &&
                              a.CatalogNbr.CompareTo(((level + 1) * 100).ToString()) < 0) || level == null)
                 .OrderBy(a => a.CatalogNbr)
@@ -75,7 +75,7 @@ namespace CourseWiki.Controllers
         [HttpGet("{subject}")]
         public async Task<ActionResult<List<Course>>> GetCoursesBySubject(string subject)
         {
-            var courses = await _context.Courses.Where(a => a.Subject == subject.ToUpper()).OrderBy(a => a.CatalogNbr)
+            var courses = await _context.Courses.Where(a => EF.Functions.ILike(a.Subject, subject)).OrderBy(a => a.CatalogNbr)
                 .ToListAsync();
             if (courses.Count == 0)
             {
@@ -95,7 +95,8 @@ namespace CourseWiki.Controllers
         [HttpGet("{subject}/{catalogNbr}")]
         public async Task<ActionResult<Course>> GetCourseByCatalogNbr(string subject, string catalogNbr)
         {
-            var course = await _context.Courses.Where(a => a.Subject == subject.ToUpper()).Where(a => a.CatalogNbr == catalogNbr)
+            var course = await _context.Courses.Where(a => EF.Functions.ILike(a.Subject, subject))
+                .Where(a => EF.Functions.ILike(a.CatalogNbr, catalogNbr))
                 .OrderBy(a => a.CatalogNbr).FirstOrDefaultAsync();
             if (course == null)
             {
@@ -113,7 +114,8 @@ namespace CourseWiki.Controllers
         public async Task<ActionResult<CourseInTerm>> GetCourseInTermByTerm(string subject, string catalogNbr,
             string term)
         {
-            var course = await _context.Courses.Where(a => a.Subject == subject.ToUpper()).Where(a => a.CatalogNbr == catalogNbr)
+            var course = await _context.Courses.Where(a => EF.Functions.ILike(a.Subject, subject))
+                .Where(a => EF.Functions.ILike(a.CatalogNbr, catalogNbr))
                 .OrderBy(a => a.CatalogNbr).FirstOrDefaultAsync();
             var courseInTerm = await _context.CoursesInTerms.Where(b => b.CourseUUID == course.Id)
                 .Where(b => b.Term == term).FirstOrDefaultAsync();
@@ -132,12 +134,13 @@ namespace CourseWiki.Controllers
         public async Task<ActionResult<Cls>> GetClassBySection(string subject, string catalogNbr, string term,
             string section)
         {
-            var course = await _context.Courses.Where(a => a.Subject == subject.ToUpper()).Where(a => a.CatalogNbr == catalogNbr)
+            var course = await _context.Courses.Where(a => EF.Functions.ILike(a.Subject, subject))
+                .Where(a => EF.Functions.ILike(a.CatalogNbr, catalogNbr))
                 .OrderBy(a => a.CatalogNbr).FirstOrDefaultAsync();
             var courseInTerm = await _context.CoursesInTerms.Where(b => b.CourseUUID == course.Id)
                 .Where(b => b.Term == term).FirstOrDefaultAsync();
             var cls = await _context.Clses.Where(a => a.Cituuid == courseInTerm.Id)
-                .Where(a => a.ClassSection == section).FirstOrDefaultAsync();
+                .Where(a => EF.Functions.ILike(a.ClassSection, section)).FirstOrDefaultAsync();
             if (cls == null)
             {
                 return NotFound();
