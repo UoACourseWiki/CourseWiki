@@ -10,6 +10,7 @@ using CourseWiki.Misc;
 using CourseWiki.Models;
 using CourseWiki.Models.DTOs.Requests;
 using CourseWiki.Models.DTOs.Responses;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,12 +21,12 @@ namespace CourseWiki.Services
     {
         Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
         Task<AuthenticateResponse> RefreshToken(string token, string ipAddress);
-        Task RevokeToken(string token, string ipAddress);
+        Task<int> RevokeToken(string token, string ipAddress);
         Task<int> Register(RegisterRequest model, string origin);
-        Task VerifyEmail(string email, string token);
+        Task<int> VerifyEmail(string email, string token);
         Task ForgotPassword(ForgotPasswordRequest model, string origin);
-        Task ValidateResetToken(ValidateResetTokenRequest model);
-        Task ResetPassword(ResetPasswordRequest model);
+        Task<int> ValidateResetToken(ValidateResetTokenRequest model);
+        Task<int> ResetPassword(ResetPasswordRequest model);
         Task<IEnumerable<AccountResponse>> GetAll();
         Task<AccountResponse> GetById(Guid id);
         Task<AccountResponse> Create(CreateRequest model);
@@ -57,7 +58,7 @@ namespace CourseWiki.Services
             var account = await _userManager.FindByEmailAsync(model.Email);
             if (account == null || await _userManager.IsEmailConfirmedAsync(account) == false ||
                 await _userManager.CheckPasswordAsync(account, model.Password) == false)
-                throw new AppException("Email or password is incorrect");
+                return new AuthenticateResponse() { ResponseCode = 401,Message = "Email or password is incorrect"};
 
             // authentication successful so generate jwt and refresh tokens
             var jwtToken = await GenerateJwtToken(account);
@@ -76,8 +77,8 @@ namespace CourseWiki.Services
 
         public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
-            var (refreshToken, account) = GetRefreshToken(token);
-
+            var (refreshToken, account,statusCode,message) = GetRefreshToken(token);
+            if (statusCode == 400) return new AuthenticateResponse(){ResponseCode = statusCode, Message = message};
             // replace old refresh token with a new one and save
             var newRefreshToken = GenerateRefreshToken(ipAddress);
             refreshToken.Revoked = DateTime.UtcNow;
@@ -97,14 +98,15 @@ namespace CourseWiki.Services
             return response;
         }
 
-        public async Task RevokeToken(string token, string ipAddress)
+        public async Task<int> RevokeToken(string token, string ipAddress)
         {
-            var (refreshToken, account) = GetRefreshToken(token);
-
+            var (refreshToken, account,statusCode,message) = GetRefreshToken(token);
+            if (statusCode == 400) return 400;
             // revoke token and save
             refreshToken.Revoked = DateTime.UtcNow;
             refreshToken.RevokedByIp = ipAddress;
             await _userManager.UpdateAsync(account);
+            return 200;
         }
 
         public async Task<int> Register(RegisterRequest model, string origin)
@@ -144,21 +146,22 @@ namespace CourseWiki.Services
             return 200;
         }
 
-        public async Task VerifyEmail(string email, string token)
+        public async Task<int> VerifyEmail(string email, string token)
         {
             var account = await _userManager.FindByEmailAsync(email);
-            if (account == null) throw new AppException("Verification failed");
+            if (account == null) return 400;
             try
             {
                 await _userManager.ConfirmEmailAsync(account, token);
             }
             catch (Exception e)
             {
-                throw new AppException("Verification failed");
+                return 400;
             }
 
             account.Verified = DateTime.UtcNow;
             await _userManager.UpdateAsync(account);
+            return 200;
         }
 
         public async Task ForgotPassword(ForgotPasswordRequest model, string origin)
@@ -177,20 +180,20 @@ namespace CourseWiki.Services
             SendPasswordResetEmail(account, origin, token);
         }
 
-        public async Task ValidateResetToken(ValidateResetTokenRequest model)
+        public async Task<int> ValidateResetToken(ValidateResetTokenRequest model)
         {
             var account = await _userManager.FindByEmailAsync(model.Email);
 
-            if (account == null || account.ResetTokenExpires < DateTime.UtcNow)
-                throw new AppException("Invalid token");
+            if (account == null || account.ResetTokenExpires < DateTime.UtcNow) return 401;
+            return 200;
         }
 
-        public async Task ResetPassword(ResetPasswordRequest model)
+        public async Task<int> ResetPassword(ResetPasswordRequest model)
         {
             var account = await _userManager.FindByEmailAsync(model.Email);
 
             if (account == null)
-                throw new AppException("Invalid token");
+                return 401;
 
             // update password and remove reset token
             account.PasswordHash = _userManager.PasswordHasher.HashPassword(account, model.Password);
@@ -198,6 +201,7 @@ namespace CourseWiki.Services
             account.ResetTokenExpires = null;
 
             var status = await _userManager.UpdateAsync(account);
+            return 200;
         }
 
         public async Task<IEnumerable<AccountResponse>> GetAll()
@@ -222,7 +226,7 @@ namespace CourseWiki.Services
         {
             // validate
             if (_userManager.FindByEmailAsync(model.Email) != null)
-                throw new AppException($"Email '{model.Email}' is already registered");
+                return new AccountResponse() { ResponseCode = 400, Message = $"Email '{model.Email}' is already registered"};
 
             var account = new Account()
             {
@@ -243,7 +247,7 @@ namespace CourseWiki.Services
 
             // validate
             if (account.Email != model.Email && _userManager.FindByEmailAsync(model.Email) != null)
-                throw new AppException($"Email '{model.Email}' is already taken");
+                return new AccountResponse() { ResponseCode = 400, Message = $"Email '{model.Email}' is already taken"};
 
             // hash password if it was entered
             if (!string.IsNullOrEmpty(model.Password))
@@ -272,13 +276,13 @@ namespace CourseWiki.Services
             return account;
         }
 
-        private (RefreshToken, Account) GetRefreshToken(string token)
+        private (RefreshToken, Account,int StatusCode,string Message) GetRefreshToken(string token)
         {
             var account = _userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
-            if (account == null) throw new AppException("Invalid token");
+            if (account == null) return (null, null, 401, "Invalid token");
             var refreshToken = account.RefreshTokens.Single(x => x.Token == token);
-            if (!refreshToken.IsActive) throw new AppException("Invalid token");
-            return (refreshToken, account);
+            if (!refreshToken.IsActive) return (null, null, 401, "Invalid token");
+            return (refreshToken, account,200,"Generate Refresh Token Success");
         }
 
         private async Task<string> GenerateJwtToken(Account account)

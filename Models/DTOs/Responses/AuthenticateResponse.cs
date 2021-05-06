@@ -9,6 +9,10 @@ namespace CourseWiki.Models.DTOs.Responses
         public Guid Id { get; set; }
         public string NickName { get; set; }
         public string Email { get; set; }
+        [JsonIgnore]
+        public string Message { get; set; }
+        [JsonIgnore]
+        public int ResponseCode { get; set; }
         public List<string> Roles { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }

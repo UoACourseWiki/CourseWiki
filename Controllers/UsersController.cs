@@ -35,7 +35,8 @@ namespace CourseWiki.Controllers
         public async Task<ActionResult<AuthenticateResponse>> Authenticate(AuthenticateRequest model)
         {
             var response = await _accountService.Authenticate(model, IpAddress());
-            return Ok(response);
+            if (response.ResponseCode == 200)return Ok(response);
+            return Unauthorized(new {message = response.Message});
         }
 
         [HttpPost("refresh-token")]
@@ -43,7 +44,8 @@ namespace CourseWiki.Controllers
         {
             var refreshToken = refreshTokenRequest.RefreshToken;
             var response = await _accountService.RefreshToken(refreshToken, IpAddress());
-            return Ok(response);
+            if (response.ResponseCode == 200)return Ok(response);
+            return BadRequest(new {message = "Refresh token failed."});
         }
 
         [Authorize]
@@ -51,8 +53,8 @@ namespace CourseWiki.Controllers
         public async Task<IActionResult> RevokeToken(RevokeTokenRequest model)
         {
             var account_req = await _userManager.FindByIdAsync(User.Claims.FirstOrDefault(c => c.Type == "id")?.Value);
-            // accept token from request body or cookie
-            var token = model.Token ?? Request.Cookies["refreshToken"];
+            // accept token from request body
+            var token = model.Token;
             var account = await _userManager.FindByEmailAsync(model.Email);
 
             if (string.IsNullOrEmpty(token))
@@ -63,8 +65,9 @@ namespace CourseWiki.Controllers
                 (await _userManager.GetRolesAsync(account_req)).Contains(Roles.Admin.ToString()) != true)
                 return Unauthorized(new {message = "Unauthorized"});
 
-            await _accountService.RevokeToken(token, IpAddress());
-            return Ok(new {message = "Token revoked"});
+            var status = await _accountService.RevokeToken(token, IpAddress());
+            if (status == 200)return Ok(new {message = "Token revoked"});
+            return BadRequest(new {message = "Revoke token failed"});
         }
 
         [HttpPost("register")]
@@ -81,12 +84,11 @@ namespace CourseWiki.Controllers
             {
                 return Conflict(new
                     {message = "You email is already registered"});
-                
             }
+
             if (statuscode == 2)
             {
                 return BadRequest(new {message = "You password is too weak."});
-                
             }
 
             return BadRequest(new {message = "Unknown error!"});
@@ -95,8 +97,9 @@ namespace CourseWiki.Controllers
         [HttpPost("verify-email")]
         public async Task<IActionResult> VerifyEmail(VerifyEmailRequest model)
         {
-            await _accountService.VerifyEmail(model.Email, model.Token);
-            return Ok(new {message = "Verification successful, you can now login"});
+            var status = await _accountService.VerifyEmail(model.Email, model.Token);
+            if (status == 200) return Ok(new {message = "Verification successful, you can now login"});
+            return BadRequest(new {message = "Email verify failed, please try again."});
         }
 
         [HttpPost("forgot-password")]
@@ -109,15 +112,17 @@ namespace CourseWiki.Controllers
         [HttpPost("validate-reset-token")]
         public async Task<IActionResult> ValidateResetToken(ValidateResetTokenRequest model)
         {
-            await _accountService.ValidateResetToken(model);
-            return Ok(new {message = "Token is valid"});
+            var status = await _accountService.ValidateResetToken(model);
+            if (status == 200) return Ok(new {message = "Token is valid"});
+            return BadRequest(new {message = "Token is invalid"});
         }
 
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest model)
         {
-            await _accountService.ResetPassword(model);
-            return Ok(new {message = "Password reset successful, you can now login"});
+            var status = await _accountService.ResetPassword(model);
+            if (status == 200)return Ok(new {message = "Password reset successful, you can now login"});
+            return BadRequest(new {message = "Password validation failed."});
         }
 
         [Authorize(Policy = "RequireAdmin")]
@@ -148,7 +153,8 @@ namespace CourseWiki.Controllers
         public async Task<ActionResult<AccountResponse>> Create(CreateRequest model)
         {
             var account = await _accountService.Create(model);
-            return Ok(account);
+            if (account.ResponseCode == 200 )return Ok(account);
+            return BadRequest(new {message = account.Message});
         }
 
         [Authorize]
