@@ -31,6 +31,8 @@ namespace CourseWiki.Services
         Task<AccountResponse> GetById(Guid id);
         Task<AccountResponse> Create(CreateRequest model);
         Task<AccountResponse> Update(Guid id, UpdateRequest model);
+        Task<AuthenticateResponse> ToAuthenticateResponse(Account account);
+        Task<AccountResponse> ToAccountResponse(Account account);
         Task Delete(Guid id);
     }
 
@@ -406,7 +408,7 @@ namespace CourseWiki.Services
             );
         }
 
-        private async Task<AuthenticateResponse> ToAuthenticateResponse(Account account)
+        public async Task<AuthenticateResponse> ToAuthenticateResponse(Account account)
         {
             if (account != null)
             {
@@ -424,7 +426,7 @@ namespace CourseWiki.Services
             return null;
         }
 
-        private async Task<AccountResponse> ToAccountResponse(Account account)
+        public async Task<AccountResponse> ToAccountResponse(Account account)
         {
             if (account != null)
             {

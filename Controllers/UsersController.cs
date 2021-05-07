@@ -147,6 +147,17 @@ namespace CourseWiki.Controllers
             var result = await _accountService.GetById(id);
             return Ok(result);
         }
+        
+        [Authorize]
+        [HttpGet("self")]
+        public async Task<ActionResult<AccountResponse>> GetSelf()
+        {
+            var id_of_account = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
+            var account = await _userManager.FindByIdAsync(id_of_account);
+
+            var result = await _accountService.ToAccountResponse(account);
+            return Ok(result);
+        }
 
         [Authorize(Policy = "RequireAdmin")]
         [HttpPost]
