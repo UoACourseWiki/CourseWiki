@@ -58,7 +58,7 @@ namespace CourseWiki.Services
             var account = await _userManager.FindByEmailAsync(model.Email);
             if (account == null || await _userManager.IsEmailConfirmedAsync(account) == false ||
                 await _userManager.CheckPasswordAsync(account, model.Password) == false)
-                return new AuthenticateResponse() { ResponseCode = 401,Message = "Email or password is incorrect"};
+                return new AuthenticateResponse() {ResponseCode = 401, Message = "Email or password is incorrect"};
 
             // authentication successful so generate jwt and refresh tokens
             var jwtToken = await GenerateJwtToken(account);
@@ -72,13 +72,15 @@ namespace CourseWiki.Services
             var response = await ToAuthenticateResponse(account);
             response.JwtToken = jwtToken;
             response.RefreshToken = refreshToken.Token;
+            response.ResponseCode = 200;
+            response.Message = "Login Succeed!";
             return response;
         }
 
         public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
-            var (refreshToken, account,statusCode,message) = GetRefreshToken(token);
-            if (statusCode == 400) return new AuthenticateResponse(){ResponseCode = statusCode, Message = message};
+            var (refreshToken, account, statusCode, message) = GetRefreshToken(token);
+            if (statusCode == 401) return new AuthenticateResponse() {ResponseCode = statusCode, Message = message};
             // replace old refresh token with a new one and save
             var newRefreshToken = GenerateRefreshToken(ipAddress);
             refreshToken.Revoked = DateTime.UtcNow;
@@ -95,12 +97,14 @@ namespace CourseWiki.Services
             var response = await ToAuthenticateResponse(account);
             response.JwtToken = jwtToken;
             response.RefreshToken = newRefreshToken.Token;
+            response.ResponseCode = 200;
+            response.Message = "Get new token successfully.";
             return response;
         }
 
         public async Task<int> RevokeToken(string token, string ipAddress)
         {
-            var (refreshToken, account,statusCode,message) = GetRefreshToken(token);
+            var (refreshToken, account, statusCode, message) = GetRefreshToken(token);
             if (statusCode == 400) return 400;
             // revoke token and save
             refreshToken.Revoked = DateTime.UtcNow;
@@ -136,6 +140,7 @@ namespace CourseWiki.Services
                     return 2;
                 }
             }
+
             var status = await _userManager.CreateAsync(account, model.Password);
             await _userManager.AddToRoleAsync(account, isFirstAccount ? Roles.Admin.ToString() : Roles.User.ToString());
             account.Created = DateTime.UtcNow;
@@ -150,14 +155,8 @@ namespace CourseWiki.Services
         {
             var account = await _userManager.FindByEmailAsync(email);
             if (account == null) return 400;
-            try
-            {
-                await _userManager.ConfirmEmailAsync(account, token);
-            }
-            catch (Exception e)
-            {
-                return 400;
-            }
+
+            if (!(await _userManager.ConfirmEmailAsync(account, token)).Succeeded) return 400;
 
             account.Verified = DateTime.UtcNow;
             await _userManager.UpdateAsync(account);
@@ -184,7 +183,9 @@ namespace CourseWiki.Services
         {
             var account = await _userManager.FindByEmailAsync(model.Email);
 
-            if (account == null || account.ResetTokenExpires < DateTime.UtcNow) return 401;
+            if (account == null || account.ResetTokenExpires < DateTime.UtcNow ||
+                await _userManager.VerifyUserTokenAsync(account, _userManager.Options.Tokens.PasswordResetTokenProvider,
+                    "ResetPassword", model.Token)) return 401;
             return 200;
         }
 
@@ -226,11 +227,12 @@ namespace CourseWiki.Services
         {
             // validate
             if (_userManager.FindByEmailAsync(model.Email) != null)
-                return new AccountResponse() { ResponseCode = 400, Message = $"Email '{model.Email}' is already registered"};
+                return new AccountResponse()
+                    {ResponseCode = 400, Message = $"Email '{model.Email}' is already registered"};
 
             var account = new Account()
             {
-                NickName = model.NickName,Created = DateTime.Now,
+                NickName = model.NickName, Created = DateTime.Now,
                 Verified = DateTime.UtcNow
             };
 
@@ -247,7 +249,7 @@ namespace CourseWiki.Services
 
             // validate
             if (account.Email != model.Email && _userManager.FindByEmailAsync(model.Email) != null)
-                return new AccountResponse() { ResponseCode = 400, Message = $"Email '{model.Email}' is already taken"};
+                return new AccountResponse() {ResponseCode = 400, Message = $"Email '{model.Email}' is already taken"};
 
             // hash password if it was entered
             if (!string.IsNullOrEmpty(model.Password))
@@ -276,13 +278,13 @@ namespace CourseWiki.Services
             return account;
         }
 
-        private (RefreshToken, Account,int StatusCode,string Message) GetRefreshToken(string token)
+        private (RefreshToken, Account, int StatusCode, string Message) GetRefreshToken(string token)
         {
             var account = _userManager.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
             if (account == null) return (null, null, 401, "Invalid token");
             var refreshToken = account.RefreshTokens.Single(x => x.Token == token);
             if (!refreshToken.IsActive) return (null, null, 401, "Invalid token");
-            return (refreshToken, account,200,"Generate Refresh Token Success");
+            return (refreshToken, account, 200, "Generate Refresh Token Success");
         }
 
         private async Task<string> GenerateJwtToken(Account account)
