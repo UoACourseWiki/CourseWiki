@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 using CourseWiki.Misc;
 using CourseWiki.Models;
 using CourseWiki.Models.DTOs.Requests;
@@ -149,7 +150,7 @@ namespace CourseWiki.Services
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(account);
 
             // send email
-            SendVerificationEmail(account, origin, token);
+            SendVerificationEmail(account, origin, HttpUtility.UrlEncode(token));
             return 200;
         }
 
@@ -178,7 +179,7 @@ namespace CourseWiki.Services
             await _userManager.UpdateAsync(account);
 
             // send email
-            SendPasswordResetEmail(account, origin, token);
+            SendPasswordResetEmail(account, origin, HttpUtility.UrlEncode(token));
         }
 
         public async Task<int> ValidateResetToken(ValidateResetTokenRequest model)
