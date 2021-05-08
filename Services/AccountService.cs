@@ -352,7 +352,7 @@ namespace CourseWiki.Services
             string message;
             if (!string.IsNullOrEmpty(origin))
             {
-                var verifyUrl = $"{origin}/Users/verify-email?token={token}";
+                var verifyUrl = $"{origin}/email_validate?email={account.Email}&token={token}";
                 message = $@"<p>Please click the below link to verify your email address:</p>
                              <p><a href=""{verifyUrl}"">{verifyUrl}</a></p>";
             }
@@ -377,10 +377,10 @@ namespace CourseWiki.Services
             string message;
             if (!string.IsNullOrEmpty(origin))
                 message =
-                    $@"<p>If you don't know your password please visit the <a href=""{origin}/Users/forgot-password"">forgot password</a> page.</p>";
+                    $@"<p>If you don't know your password please visit the <a href=""{origin}/password_reset"">forgot password</a> page.</p>";
             else
                 message =
-                    "<p>If you don't know your password you can reset it via the <code>/Users/forgot-password</code> api route.</p>";
+                    $@"<p>If you don't know your password please visit the <a href=""{origin}/password_reset"">forgot password</a> page.</p>";
 
             _emailService.Send(
                 to: email,
@@ -396,7 +396,7 @@ namespace CourseWiki.Services
             string message;
             if (!string.IsNullOrEmpty(origin))
             {
-                var resetUrl = $"{origin}/Users/reset-password?token={token}";
+                var resetUrl = $"{origin}/reset-password?email={account.Email}&token={token}";
                 message =
                     $@"<p>Please click the below link to reset your password, the link will be valid for 1 day:</p>
                              <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
