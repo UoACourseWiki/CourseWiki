@@ -99,6 +99,8 @@ namespace CourseWiki
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "CourseWiki v1"));
+                app.UseCors(x =>
+                    x.AllowAnyMethod().AllowAnyHeader().SetIsOriginAllowed(origin => true).AllowCredentials());
             }
 
             // app.UseHttpsRedirection();
