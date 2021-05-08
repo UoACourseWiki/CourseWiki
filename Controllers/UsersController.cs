@@ -182,7 +182,7 @@ namespace CourseWiki.Controllers
             if ((await _userManager.GetRolesAsync(account)).Contains(Roles.Admin.ToString()) != true)
                 model.Role = null;
             if (((await _userManager.GetRolesAsync(account)).Contains(Roles.Admin.ToString()) != true) &&
-                (await _userManager.CheckPasswordAsync(account, model.Password)) != true)
+                (await _userManager.CheckPasswordAsync(account, model.OldPassword)) != true)
             {
                 return BadRequest(new {message = "Wrong Password!"});
             }
