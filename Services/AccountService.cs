@@ -251,19 +251,26 @@ namespace CourseWiki.Services
             var account = await GetAccount(id);
 
             // validate
-            if (account.Email != model.Email && _userManager.FindByEmailAsync(model.Email) != null)
+            if (!string.IsNullOrEmpty(model.Email) && account.Email != model.Email &&
+                _userManager.FindByEmailAsync(model.Email) != null)
                 return new AccountResponse() {ResponseCode = 400, Message = $"Email '{model.Email}' is already taken"};
 
             // hash password if it was entered
             if (!string.IsNullOrEmpty(model.Password))
                 await _userManager.ChangePasswordAsync(account, model.OldPassword, model.Password);
             // copy model to account and save
-            account.NickName = model.NickName;
+            if (!string.IsNullOrEmpty(model.NickName)) account.NickName = model.NickName;
             account.Updated = DateTime.UtcNow;
             if (model.Role != null) await _userManager.AddToRoleAsync(account, model.Role);
-            await _userManager.UpdateAsync(account);
+            if ((await _userManager.UpdateAsync(account)).Succeeded)
+            {
+                var accountResponse = await ToAccountResponse(account);
+                accountResponse.ResponseCode = 200;
+                accountResponse.Message = "Update Succeed.";
+                return accountResponse;
+            }
 
-            return await ToAccountResponse(account);
+            return new AccountResponse() {ResponseCode = 400, Message = $"Unknown Error!"};
         }
 
         public async Task Delete(Guid id)

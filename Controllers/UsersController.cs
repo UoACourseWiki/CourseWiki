@@ -35,7 +35,7 @@ namespace CourseWiki.Controllers
         public async Task<ActionResult<AuthenticateResponse>> Authenticate(AuthenticateRequest model)
         {
             var response = await _accountService.Authenticate(model, IpAddress());
-            if (response.ResponseCode == 200)return Ok(response);
+            if (response.ResponseCode == 200) return Ok(response);
             return Unauthorized(new {message = response.Message});
         }
 
@@ -44,7 +44,7 @@ namespace CourseWiki.Controllers
         {
             var refreshToken = refreshTokenRequest.RefreshToken;
             var response = await _accountService.RefreshToken(refreshToken, IpAddress());
-            if (response.ResponseCode == 200)return Ok(response);
+            if (response.ResponseCode == 200) return Ok(response);
             return BadRequest(new {message = "Refresh token failed."});
         }
 
@@ -66,7 +66,7 @@ namespace CourseWiki.Controllers
                 return Unauthorized(new {message = "Unauthorized"});
 
             var status = await _accountService.RevokeToken(token, IpAddress());
-            if (status == 200)return Ok(new {message = "Token revoked"});
+            if (status == 200) return Ok(new {message = "Token revoked"});
             return BadRequest(new {message = "Revoke token failed"});
         }
 
@@ -121,7 +121,7 @@ namespace CourseWiki.Controllers
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest model)
         {
             var status = await _accountService.ResetPassword(model);
-            if (status == 200)return Ok(new {message = "Password reset successful, you can now login"});
+            if (status == 200) return Ok(new {message = "Password reset successful, you can now login"});
             return BadRequest(new {message = "Password validation failed."});
         }
 
@@ -147,7 +147,7 @@ namespace CourseWiki.Controllers
             var result = await _accountService.GetById(id);
             return Ok(result);
         }
-        
+
         [Authorize]
         [HttpGet("self")]
         public async Task<ActionResult<AccountResponse>> GetSelf()
@@ -164,7 +164,7 @@ namespace CourseWiki.Controllers
         public async Task<ActionResult<AccountResponse>> Create(CreateRequest model)
         {
             var account = await _accountService.Create(model);
-            if (account.ResponseCode == 200 )return Ok(account);
+            if (account.ResponseCode == 200) return Ok(account);
             return BadRequest(new {message = account.Message});
         }
 
@@ -181,9 +181,15 @@ namespace CourseWiki.Controllers
             // only admins can update role
             if ((await _userManager.GetRolesAsync(account)).Contains(Roles.Admin.ToString()) != true)
                 model.Role = null;
+            if (((await _userManager.GetRolesAsync(account)).Contains(Roles.Admin.ToString()) != true) &&
+                (await _userManager.CheckPasswordAsync(account, model.Password)) != true)
+            {
+                return BadRequest(new {message = "Wrong Password!"});
+            }
 
             var status = await _accountService.Update(id, model);
-            return Ok(status);
+            if (status.ResponseCode == 200) return Ok(new {message = status.Message});
+            return BadRequest(new {message = status.Message});
         }
 
         [Authorize]
