@@ -109,8 +109,8 @@ namespace CourseWiki.Controllers
                     });
                 }
             }
-
-            return Content("success!");
+            
+            return Ok("success!");
         }
     }
 }
