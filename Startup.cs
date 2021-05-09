@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using CourseWiki.Misc;
 using CourseWiki.Models;
@@ -51,7 +53,10 @@ namespace CourseWiki
                     BearerFormat = "JWT",
                     Description = "JWT Authorization header using the Bearer scheme."
                 });
-
+                // Set the comments path for the Swagger JSON and UI.
+                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
                 c.OperationFilter<AuthResponsesOperationFilter>();
             });
             services.AddScoped<IAccountService, AccountService>();

@@ -13,6 +13,10 @@ using System.Threading.Tasks;
 
 namespace CourseWiki.Controllers
 {
+    /// <summary>
+    /// Api for fetch course and class information from UoA API.
+    /// </summary>
+    [Produces("application/json")]
     [Route("api/[controller]")]
     [ApiController]
     public class InitController : ControllerBase
@@ -20,12 +24,26 @@ namespace CourseWiki.Controllers
         private readonly ILogger<InitController> _logger;
         private readonly IConfiguration m_config;
 
+        /// <summary>
+        /// load config and logger settings.
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="config"></param>
         public InitController(ILogger<InitController> logger, IConfiguration config)
         {
             _logger = logger;
             m_config = config;
         }
 
+        /// <summary>
+        /// Fetch course and class information from UoA API
+        /// </summary>
+        /// <param name="initRequest"></param>
+        /// <returns>Import result</returns>
+        /// <response code="200">Import Succeed.</response>
+        /// <response code="400">Request is invalid.</response>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
         [HttpPost("courseInit")]
         public async Task<ActionResult<InitRequest>> InitDB(InitRequest initRequest)
         {
