@@ -396,7 +396,7 @@ namespace CourseWiki.Services
             string message;
             if (!string.IsNullOrEmpty(origin))
             {
-                var resetUrl = $"{origin}/reset-password?email={account.Email}&token={token}";
+                var resetUrl = $"{origin}/reset?email={account.Email}&token={token}";
                 message =
                     $@"<p>Please click the below link to reset your password, the link will be valid for 1 day:</p>
                              <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
