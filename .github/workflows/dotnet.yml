@@ -47,6 +47,7 @@ jobs:
       - name: Update database
         run: |
           dotnet tool install --global dotnet-ef
+          cp ./CourseWiki.Tests/appsettings.json ./CourseWiki/appsettings.json
           dotnet ef migrations add "Add_new_tables" --context ApiDbContext --project CourseWiki
           dotnet-ef database update --context ApiDbContext --project CourseWiki
       - name: Build
