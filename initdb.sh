@@ -14,7 +14,7 @@ PGPASSWORD="${POSTGRES_PASSWORD}" `which psql` -t -A \
 -d "${POSTGRES_DATABASE}" \
 -U "${POSTGRES_USERNAME}" \
 -c "${sql}"
-rm -rf ./Migrations/
-~/.dotnet/tools/dotnet-ef migrations add "Add_new_tables"
-~/.dotnet/tools/dotnet-ef database update
+rm -rf ./CourseWiki/Migrations/
+~/.dotnet/tools/dotnet-ef migrations add "Add_new_tables" --context ApiDbContext --project CourseWiki
+~/.dotnet/tools/dotnet-ef database update --context ApiDbContext --project CourseWiki
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using CourseWiki.Controllers;
@@ -13,11 +14,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
-namespace CourseWiki.Test
+namespace CourseWiki.Tests
 {
+    [TestCaseOrderer("CourseWiki.Tests.PriorityOrderer", "CourseWiki.Tests")]
     public class InitControllerTest
     {
-        [Fact]
+        [Fact, TestPriority(0)]
         public async Task IsImportSucceed()
         {
             List<InitSubject> _initSubjects = new List<InitSubject>();
@@ -38,10 +40,10 @@ namespace CourseWiki.Test
             var _controller = new InitController(logger, configuration);
             var _actionResult = await _controller.InitDB(_initRequest);
             var result = _actionResult.Result as OkObjectResult;
-            Assert.Equal("success!", result.Value);
+            Assert.Equal("success!", result?.Value);
         }
 
-        [Fact]
+        [Fact, TestPriority(1)]
         public async Task CourseInfoTest()
         {
             var configuration = new ConfigurationBuilder()
@@ -54,7 +56,7 @@ namespace CourseWiki.Test
             var _controller = new CoursesController(apiDbContext);
             var _actionResult = await _controller.GetCourseByCatalogNbr("COMPSCI", "732");
             var result = _actionResult.Result as OkObjectResult;
-            Assert.IsType<Course>(result.Value);
+            Assert.IsType<Course>(result?.Value);
         }
     }
 }

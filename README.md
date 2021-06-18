@@ -20,7 +20,7 @@ The configuration settings in the basics section are **required** and must be de
 
 ```
 "ConnectionStrings": {
-    "rmfDatabase": "Host=127.0.0.1;Username=coursewiki;Password=coursewiki;Database=coursewiki"
+    "rmfDatabase": "Host=127.0.0.1;Username=coursewiki;Password=coursewiki;Database=coursewiki;"
   }
 ```
 

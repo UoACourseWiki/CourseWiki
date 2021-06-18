@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.31129.286
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CourseWiki", "CourseWiki\CourseWiki.csproj", "{E132820D-2E18-4B18-9CAE-F55CF06B8BE2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CourseWiki.Test", "CourseWiki.Test\CourseWiki.Test.csproj", "{5D2D253E-92D5-4606-93C3-CE36AA2ED9D5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CourseWiki.Tests", "CourseWiki.Tests\CourseWiki.Tests.csproj", "{5D2D253E-92D5-4606-93C3-CE36AA2ED9D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
